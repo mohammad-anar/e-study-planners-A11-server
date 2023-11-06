@@ -27,21 +27,22 @@ async function run() {
     const assignmentCollection = client
       .db("groupStudyDB")
       .collection("allAssignments");
+    const submittedassignmentCollection = client
+      .db("groupStudyDB")
+      .collection("submittedassignment");
 
-      app.get("/api/v1/assignments", async (req, res) => {
-        const emailToSearch = req.query.email;
-        console.log(emailToSearch);
-        const query = {}
-        if (emailToSearch) {
-          query.email = emailToSearch;
-        }
-      
-        const result = await assignmentCollection
-          .find(query)
-          .toArray();
-      
-        res.send(result);
-      });
+    app.get("/api/v1/assignments", async (req, res) => {
+      const emailToSearch = req.query.email;
+      console.log(emailToSearch);
+      const query = {};
+      if (emailToSearch) {
+        query.email = emailToSearch;
+      }
+
+      const result = await assignmentCollection.find(query).toArray();
+
+      res.send(result);
+    });
 
     app.get("/api/v1/assignments/:id", async (req, res) => {
       const id = req.params.id;
@@ -61,6 +62,33 @@ async function run() {
       }
       const result = await assignmentCollection.find().toArray();
       res.send(result);
+    });
+    // /api/v1/submittedassignment , body// for submitted assignment -1
+    // /api/v1/submittedassignment // for get assignment not provide body, -2
+    app.post("/api/v1/submittedassignment", async (req, res) => {
+      const assignment = req.body;
+      console.log(assignment);
+      console.log(Object.keys(assignment).length === 0);
+      if(Object.keys(assignment).length !== 0) {
+        // setdata 
+        const result =
+          await submittedassignmentCollection.insertOne(
+            assignment
+          );
+        return res.send(result);
+      }
+    
+    //   get data 
+        const result = await submittedassignmentCollection.find().toArray();
+        res.send(result);
+    //   else{
+        // const result =
+        //   await submittedassignmentCollection.insertOne(
+        //     assignment
+        //   );
+        // return res.send(result);
+    //   }
+      
     });
 
     // end apis
