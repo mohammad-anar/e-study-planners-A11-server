@@ -1,4 +1,5 @@
 const express = require("express");
+var jwt = require("jsonwebtoken");
 const cors = require("cors");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
@@ -8,6 +9,7 @@ const port = process.env.PORT || 5000;
 // parser
 app.use(cors());
 app.use(express.json());
+
 
 // uri
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.zav38m0.mongodb.net/?retryWrites=true&w=majority`;
@@ -53,6 +55,12 @@ async function run() {
       const result = await assignmentCollection.findOne(query);
       res.send(result);
     });
+    // jwt
+    app.post("/api/v1/access-token", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign({ email: "raihan@shakila.com" }, process.env.ACCESS_TOKEN);
+      res.send(token)
+    });
 
     app.post("/api/v1/assignments", async (req, res) => {
       const assignment = req.body || null;
@@ -70,21 +78,19 @@ async function run() {
       res.send(result);
     });
     app.get("/api/v1/submittedassignment", async (req, res) => {
-        const email = req.query.email;
-        const query = {name:email}
-        console.log(email);
-        const result = await submittedassignmentCollection
-        .find(query)
-        .toArray();
-        res.send(result)
-    })
+      const email = req.query.email;
+      const query = { name: email };
+      console.log(email);
+      const result = await submittedassignmentCollection.find(query).toArray();
+      res.send(result);
+    });
     // /api/v1/submittedassignment , body// for submitted assignment -1
     // /api/v1/submittedassignment // for get assignment not provide body, -2
     // http://localhost:5000/api/v1/submittedassignment/65484ef86a8dc0ab5c0be3b6 -3
     app.post("/api/v1/submittedassignment", async (req, res) => {
       const assignment = req.body;
       const status = req.query || undefined;
-    //   console.log(status, "status", assignment);
+      //   console.log(status, "status", assignment);
 
       const query = {};
       if (Object.keys(assignment).length !== 0) {
@@ -95,13 +101,11 @@ async function run() {
         return res.send(result);
       }
 
-      if(Object.keys(status).length !== 0) {
-        query.status = "pending"        
+      if (Object.keys(status).length !== 0) {
+        query.status = "pending";
       }
       //   get data
-      const result = await submittedassignmentCollection
-        .find(query)
-        .toArray();
+      const result = await submittedassignmentCollection.find(query).toArray();
       res.send(result);
     });
 
@@ -110,7 +114,7 @@ async function run() {
       const id = req.params.id;
       const data = req.body;
       console.log(data, "hi");
-      const filter = {_id: new ObjectId(id)};
+      const filter = { _id: new ObjectId(id) };
       const options = { upsert: true };
       const updateDoc = {
         $set: {
@@ -134,8 +138,8 @@ async function run() {
       const updateDoc = {};
       if (data) {
         updateDoc.$set = {
-          ...data
-        }
+          ...data,
+        };
       }
       const result = await assignmentCollection.updateOne(
         query,
@@ -146,14 +150,14 @@ async function run() {
     });
 
     app.delete("/api/v1/assignments/:id", async (req, res) => {
-        const id = req.params.id;
-        const query = {};
-        if (id) {
-          query._id = new ObjectId(id);
-        }
-        const result = await assignmentCollection.deleteOne(query);
-        res.send(result);
-      });
+      const id = req.params.id;
+      const query = {};
+      if (id) {
+        query._id = new ObjectId(id);
+      }
+      const result = await assignmentCollection.deleteOne(query);
+      res.send(result);
+    });
 
     // end apis
     await client.db("admin").command({ ping: 1 });
