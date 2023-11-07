@@ -1,14 +1,19 @@
 const express = require("express");
 var jwt = require("jsonwebtoken");
 const cors = require("cors");
+const cookieParser = require('cookie-parser');
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 const port = process.env.PORT || 5000;
 
 // parser
-app.use(cors());
+app.use(cors({
+    origin:["http://localhost:5173", "http://localhost:5174" ],
+    credentials: true,
+}));
 app.use(express.json());
+app.use(cookieParser())
 
 
 // uri
@@ -21,6 +26,25 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+
+
+// middle wares 
+const gateman = async (req, res) => {
+    const token = req.cookies.token
+    console.log(token, "from middlewares ");
+}
+
+const tokenVerify = (req, res, next) => {
+    const token = req.cookies.token;
+    jwt.verify(token, process.env.ACCESS_TOKEN, (err, decoded) => {
+        if(err){
+            return res.send(err.message);
+        }
+        console.log(decoded);
+        req.user= decoded;
+        next()
+    })
+}
 
 async function run() {
   try {
@@ -58,8 +82,11 @@ async function run() {
     // jwt
     app.post("/api/v1/access-token", async (req, res) => {
       const user = req.body;
-      const token = jwt.sign({ email: "raihan@shakila.com" }, process.env.ACCESS_TOKEN);
-      res.send(token)
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN);
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: false,
+      }).send({success: true})
     });
 
     app.post("/api/v1/assignments", async (req, res) => {
@@ -87,7 +114,7 @@ async function run() {
     // /api/v1/submittedassignment , body// for submitted assignment -1
     // /api/v1/submittedassignment // for get assignment not provide body, -2
     // http://localhost:5000/api/v1/submittedassignment/65484ef86a8dc0ab5c0be3b6 -3
-    app.post("/api/v1/submittedassignment", async (req, res) => {
+    app.post("/api/v1/submittedassignment", async (req, res) => {        
       const assignment = req.body;
       const status = req.query || undefined;
       //   console.log(status, "status", assignment);
