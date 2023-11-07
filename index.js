@@ -63,33 +63,97 @@ async function run() {
       const result = await assignmentCollection.find().toArray();
       res.send(result);
     });
+    app.get("/api/v1/submittedassignment/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await submittedassignmentCollection.findOne(query);
+      res.send(result);
+    });
+    app.get("/api/v1/submittedassignment", async (req, res) => {
+        const email = req.query.email;
+        const query = {name:email}
+        console.log(email);
+        const result = await submittedassignmentCollection
+        .find(query)
+        .toArray();
+        res.send(result)
+    })
     // /api/v1/submittedassignment , body// for submitted assignment -1
     // /api/v1/submittedassignment // for get assignment not provide body, -2
+    // http://localhost:5000/api/v1/submittedassignment/65484ef86a8dc0ab5c0be3b6 -3
     app.post("/api/v1/submittedassignment", async (req, res) => {
       const assignment = req.body;
-      console.log(assignment);
-      console.log(Object.keys(assignment).length === 0);
-      if(Object.keys(assignment).length !== 0) {
-        // setdata 
-        const result =
-          await submittedassignmentCollection.insertOne(
-            assignment
-          );
+      const status = req.query || undefined;
+    //   console.log(status, "status", assignment);
+
+      const query = {};
+      if (Object.keys(assignment).length !== 0) {
+        // setdata
+        const result = await submittedassignmentCollection.insertOne(
+          assignment
+        );
         return res.send(result);
       }
-    
-    //   get data 
-        const result = await submittedassignmentCollection.find().toArray();
-        res.send(result);
-    //   else{
-        // const result =
-        //   await submittedassignmentCollection.insertOne(
-        //     assignment
-        //   );
-        // return res.send(result);
-    //   }
-      
+
+      if(Object.keys(status).length !== 0) {
+        query.status = "pending"        
+      }
+      //   get data
+      const result = await submittedassignmentCollection
+        .find(query)
+        .toArray();
+      res.send(result);
     });
+
+    // update submited assignment
+    app.put("/api/v1/submittedassignment/:id", async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+      console.log(data, "hi");
+      const filter = {_id: new ObjectId(id)};
+      const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          ...data,
+          status: "completed",
+        },
+      };
+      const result = await submittedassignmentCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+      );
+      res.send(result);
+    });
+
+    app.patch("/api/v1/assignments/:id", async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+      const query = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updateDoc = {};
+      if (data) {
+        updateDoc.$set = {
+          ...data
+        }
+      }
+      const result = await assignmentCollection.updateOne(
+        query,
+        updateDoc,
+        options
+      );
+      res.send(result);
+    });
+
+    app.delete("/api/v1/assignments/:id", async (req, res) => {
+        const id = req.params.id;
+        const query = {};
+        if (id) {
+          query._id = new ObjectId(id);
+        }
+        const result = await assignmentCollection.deleteOne(query);
+        res.send(result);
+      });
 
     // end apis
     await client.db("admin").command({ ping: 1 });
