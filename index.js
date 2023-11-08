@@ -10,7 +10,7 @@ const port = process.env.PORT || 5000;
 // parser
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:5174", "https://debonair-m00ove.surge.sh"],
+    origin: ["http://localhost:5173", "http://localhost:5174", "https://debonair-m00ove.surge.sh", "https://dist-three-blue.vercel.app", "https://egroupstudy.surge.sh"],
     credentials: true,
   })
 );
