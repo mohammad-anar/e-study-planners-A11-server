@@ -10,7 +10,13 @@ const port = process.env.PORT || 5000;
 // parser
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:5174", "https://debonair-m00ove.surge.sh", "https://dist-three-blue.vercel.app", "https://egroupstudy.surge.sh"],
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:5174",
+      "https://debonair-m00ove.surge.sh",
+      "https://dist-three-blue.vercel.app",
+      "https://egroupstudy.surge.sh",
+    ],
     credentials: true,
   })
 );
@@ -29,10 +35,6 @@ const client = new MongoClient(uri, {
 });
 
 // middle wares
-const gateman = async (req, res) => {
-  const token = req.cookies.token;
-  console.log(token, "from middlewares ");
-};
 
 const tokenVerify = (req, res, next) => {
   const token = req.cookies.token;
@@ -62,16 +64,26 @@ async function run() {
       .collection("submittedassignment");
 
     app.get("/api/v1/assignments", async (req, res) => {
+      const page = Number(req.query.page);
+      const size = Number(req.query.size);
+      const skip = page * size;
+      console.log(page, skip);
+
       const emailToSearch = req.query.email;
-      console.log(emailToSearch);
       const query = {};
       if (emailToSearch) {
         query.email = emailToSearch;
       }
+      const count = await assignmentCollection.countDocuments();
+      console.log(count);
 
-      const result = await assignmentCollection.find(query).toArray();
+      const result = await assignmentCollection
+        .find(query)
+        .skip(skip)
+        .limit(size)
+        .toArray();
 
-      res.send(result);
+      res.send({ result, count });
     });
 
     app.get("/api/v1/assignments/:id", async (req, res) => {
@@ -91,7 +103,7 @@ async function run() {
         .cookie("token", token, {
           httpOnly: true,
           secure: true,
-          sameSite: "none"
+          sameSite: "none",
         })
         .send({ success: true });
     });
@@ -121,12 +133,12 @@ async function run() {
       }
     );
     app.get("/api/v1/submittedassignment", tokenVerify, async (req, res) => {
-        const userEmail = req.user?.email;
-        const queryEmail = req.query?.email;
-        console.log(userEmail, queryEmail);
-        if (userEmail !== queryEmail) {
-          return res.status(403).send("forbidden access");
-        }
+      const userEmail = req.user?.email;
+      const queryEmail = req.query?.email;
+      console.log(userEmail, queryEmail);
+      if (userEmail !== queryEmail) {
+        return res.status(403).send("forbidden access");
+      }
       const email = req.query.email;
       const query = { name: email };
       console.log(email);
@@ -216,10 +228,16 @@ async function run() {
 
     app.delete("/api/v1/assignments/:id", async (req, res) => {
       const id = req.params.id;
+      const email = req.query.email;
+      console.log(id, email);
       const query = {};
-      if (id) {
-        query._id = new ObjectId(id);
+      if (id && email) {
+        query._id= new ObjectId(id);
+        query.email = email;
+      }else{
+        return;
       }
+      console.log(query);
       const result = await assignmentCollection.deleteOne(query);
       res.send(result);
     });
