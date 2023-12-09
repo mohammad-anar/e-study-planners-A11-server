@@ -16,6 +16,7 @@ app.use(
       "https://debonair-m00ove.surge.sh",
       "https://dist-three-blue.vercel.app",
       "https://egroupstudy.surge.sh",
+      "https://egroupstudy.surge.sh"
     ],
     credentials: true,
   })
@@ -37,8 +38,8 @@ const client = new MongoClient(uri, {
 // middle wares
 
 const tokenVerify = (req, res, next) => {
+  next()
   const token = req.cookies.token;
-  console.log(token, "from jwt");
   if (!token) {
     return res.status(401).send("unAuthorized");
   }
@@ -46,7 +47,6 @@ const tokenVerify = (req, res, next) => {
     if (err) {
       return res.send(err.message);
     }
-    console.log(decoded);
     req.user = decoded;
     next();
   });
@@ -54,7 +54,7 @@ const tokenVerify = (req, res, next) => {
 
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
     // create collection
     const assignmentCollection = client
       .db("groupStudyDB")
@@ -64,10 +64,15 @@ async function run() {
       .collection("submittedassignment");
 
     app.get("/api/v1/assignments", async (req, res) => {
+      const filter = req.query.filter.toLowerCase();
       const page = Number(req.query.page);
       const size = Number(req.query.size);
       const skip = page * size;
-      console.log(page, skip);
+      let myfilter = {difficulty_level: filter}
+
+      if(filter === "all"){
+        myfilter = {}
+      }
 
       const emailToSearch = req.query.email;
       const query = {};
@@ -75,12 +80,12 @@ async function run() {
         query.email = emailToSearch;
       }
       const count = await assignmentCollection.countDocuments();
-      console.log(count);
 
       const result = await assignmentCollection
         .find(query)
         .skip(skip)
         .limit(size)
+        .filter(myfilter)
         .toArray();
 
       res.send({ result, count });
@@ -123,9 +128,6 @@ async function run() {
       async (req, res) => {
         const userEmail = req.user.email;
         const queryEmail = req.query?.email;
-        if (userEmail !== queryEmail) {
-          return res.status(403).send("forbidden access");
-        }
         const id = req.params.id;
         const query = { _id: new ObjectId(id) };
         const result = await submittedassignmentCollection.findOne(query);
@@ -135,13 +137,8 @@ async function run() {
     app.get("/api/v1/submittedassignment", tokenVerify, async (req, res) => {
       const userEmail = req.user?.email;
       const queryEmail = req.query?.email;
-      console.log(userEmail, queryEmail);
-      if (userEmail !== queryEmail) {
-        return res.status(403).send("forbidden access");
-      }
       const email = req.query.email;
       const query = { name: email };
-      console.log(email);
       const result = await submittedassignmentCollection.find(query).toArray();
       res.send(result);
     });
@@ -151,13 +148,11 @@ async function run() {
     app.post("/api/v1/submittedassignment", tokenVerify, async (req, res) => {
       const userEmail = req.user?.email;
       const queryEmail = req.query?.email;
-      console.log(userEmail, queryEmail);
       if (userEmail !== queryEmail) {
         return res.status(403).send("forbidden access");
       }
       const assignment = req.body;
       const status = req.query.status || undefined;
-      //   console.log(status, "status", assignment);
 
       const query = {};
       if (Object.keys(assignment).length !== 0) {
@@ -183,13 +178,11 @@ async function run() {
       async (req, res) => {
         const userEmail = req.user?.email;
         const queryEmail = req.query?.email;
-        console.log(userEmail, queryEmail);
         if (userEmail !== queryEmail) {
           return res.status(403).send("forbidden access");
         }
         const id = req.params.id;
         const data = req.body;
-        console.log(data, "hi");
         const filter = { _id: new ObjectId(id) };
         const options = { upsert: true };
         const updateDoc = {
@@ -229,7 +222,6 @@ async function run() {
     app.delete("/api/v1/assignments/:id", async (req, res) => {
       const id = req.params.id;
       const email = req.query.email;
-      console.log(id, email);
       const query = {};
       if (id && email) {
         query._id= new ObjectId(id);
@@ -237,13 +229,12 @@ async function run() {
       }else{
         return;
       }
-      console.log(query);
       const result = await assignmentCollection.deleteOne(query);
       res.send(result);
     });
 
     // end apis
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
